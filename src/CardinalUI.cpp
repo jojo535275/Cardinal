@@ -36,7 +36,6 @@
 #include "AsyncDialog.hpp"
 #include "PluginContext.hpp"
 #include "WindowParameters.hpp"
-#include "ResizeHandle.hpp"
 
 GLFWAPI int glfwGetKeyScancode(int) { return 0; }
 
@@ -68,6 +67,15 @@ GLFWAPI void glfwSetClipboardString(GLFWwindow*, const char* const text)
     DISTRHO_SAFE_ASSERT_RETURN(context->ui != nullptr,);
 
     context->ui->setClipboard(nullptr, text, std::strlen(text)+1);
+}
+
+GLFWAPI void glfwSetCursor(GLFWwindow*, GLFWcursor* const cursor)
+{
+    CardinalPluginContext* const context = static_cast<CardinalPluginContext*>(APP);
+    DISTRHO_SAFE_ASSERT_RETURN(context != nullptr,);
+    DISTRHO_SAFE_ASSERT_RETURN(context->ui != nullptr,);
+
+    context->ui->setCursor(cursor != nullptr ? kMouseCursorDiagonal : kMouseCursorArrow);
 }
 
 GLFWAPI double glfwGetTime(void)
@@ -181,7 +189,6 @@ GLFWAPI const char* glfwGetKeyName(const int key, int)
 namespace rack {
 namespace app {
     widget::Widget* createMenuBar(bool isStandalone);
-    void hideResizeHandle(Scene* scene);
 }
 namespace window {
     void WindowSetPluginUI(Window* window, DISTRHO_NAMESPACE::UI* ui);
@@ -230,10 +237,10 @@ void handleHostParameterDrag(const CardinalPluginContext* pcontext, uint index, 
 class CardinalUI : public CardinalBaseUI,
                    public WindowParametersCallback
 {
-    rack::math::Vec fLastMousePos;
-    ResizeHandle fResizeHandle;
-    WindowParameters fWindowParameters;
-    int fRateLimitStep = 0;
+    rack::math::Vec lastMousePos;
+    WindowParameters windowParameters;
+    int rateLimitStep = 0;
+    bool firstIdle = true;
 
     struct ScopedContext {
         CardinalPluginContext* const context;
@@ -263,19 +270,12 @@ class CardinalUI : public CardinalBaseUI,
 
 public:
     CardinalUI()
-        : CardinalBaseUI(1228, 666),
-          fResizeHandle(this)
+        : CardinalBaseUI(1228, 666)
     {
         Window& window(getWindow());
 
         window.setIgnoringKeyRepeat(true);
         context->nativeWindowId = window.getNativeWindowHandle();
-
-        if (isResizable())
-        {
-            fResizeHandle.hide();
-            hideResizeHandle(context->scene);
-        }
 
         const double scaleFactor = getScaleFactor();
 
@@ -350,6 +350,12 @@ public:
 
     void uiIdle() override
     {
+        if (firstIdle)
+        {
+            firstIdle = false;
+            getWindow().focus();
+        }
+
         if (filebrowserhandle != nullptr && fileBrowserIdle(filebrowserhandle))
         {
             {
@@ -364,10 +370,10 @@ public:
             filebrowserhandle = nullptr;
         }
 
-        if (fWindowParameters.rateLimit != 0 && ++fRateLimitStep % (fWindowParameters.rateLimit * 2))
+        if (windowParameters.rateLimit != 0 && ++rateLimitStep % (windowParameters.rateLimit * 2))
             return;
 
-        fRateLimitStep = 0;
+        rateLimitStep = 0;
         repaint();
     }
 
@@ -378,54 +384,54 @@ public:
         switch (param)
         {
         case kWindowParameterShowTooltips:
-            fWindowParameters.tooltips = value > 0.5f;
+            windowParameters.tooltips = value > 0.5f;
             break;
         case kWindowParameterCableOpacity:
             mult = 100.0f;
-            fWindowParameters.cableOpacity = value;
+            windowParameters.cableOpacity = value;
             break;
         case kWindowParameterCableTension:
             mult = 100.0f;
-            fWindowParameters.cableTension = value;
+            windowParameters.cableTension = value;
             break;
         case kWindowParameterRackBrightness:
             mult = 100.0f;
-            fWindowParameters.rackBrightness = value;
+            windowParameters.rackBrightness = value;
             break;
         case kWindowParameterHaloBrightness:
             mult = 100.0f;
-            fWindowParameters.haloBrightness = value;
+            windowParameters.haloBrightness = value;
             break;
         case kWindowParameterKnobMode:
             switch (static_cast<int>(value + 0.5f))
             {
             case rack::settings::KNOB_MODE_LINEAR:
                 value = 0;
-                fWindowParameters.knobMode = rack::settings::KNOB_MODE_LINEAR;
+                windowParameters.knobMode = rack::settings::KNOB_MODE_LINEAR;
                 break;
             case rack::settings::KNOB_MODE_ROTARY_ABSOLUTE:
                 value = 1;
-                fWindowParameters.knobMode = rack::settings::KNOB_MODE_ROTARY_ABSOLUTE;
+                windowParameters.knobMode = rack::settings::KNOB_MODE_ROTARY_ABSOLUTE;
                 break;
             case rack::settings::KNOB_MODE_ROTARY_RELATIVE:
                 value = 2;
-                fWindowParameters.knobMode = rack::settings::KNOB_MODE_ROTARY_RELATIVE;
+                windowParameters.knobMode = rack::settings::KNOB_MODE_ROTARY_RELATIVE;
                 break;
             }
             break;
         case kWindowParameterWheelKnobControl:
-            fWindowParameters.knobScroll = value > 0.5f;
+            windowParameters.knobScroll = value > 0.5f;
             break;
         case kWindowParameterWheelSensitivity:
             mult = 1000.0f;
-            fWindowParameters.knobScrollSensitivity = value;
+            windowParameters.knobScrollSensitivity = value;
             break;
         case kWindowParameterLockModulePositions:
-            fWindowParameters.lockModules = value > 0.5f;
+            windowParameters.lockModules = value > 0.5f;
             break;
         case kWindowParameterUpdateRateLimit:
-            fWindowParameters.rateLimit = static_cast<int>(value + 0.5f);
-            fRateLimitStep = 0;
+            windowParameters.rateLimit = static_cast<int>(value + 0.5f);
+            rateLimitStep = 0;
             break;
         default:
             return;
@@ -450,52 +456,52 @@ protected:
         switch (index - kModuleParameters)
         {
         case kWindowParameterShowTooltips:
-            fWindowParameters.tooltips = value > 0.5f;
+            windowParameters.tooltips = value > 0.5f;
             break;
         case kWindowParameterCableOpacity:
-            fWindowParameters.cableOpacity = value / 100.0f;
+            windowParameters.cableOpacity = value / 100.0f;
             break;
         case kWindowParameterCableTension:
-            fWindowParameters.cableTension = value / 100.0f;
+            windowParameters.cableTension = value / 100.0f;
             break;
         case kWindowParameterRackBrightness:
-            fWindowParameters.rackBrightness = value / 100.0f;
+            windowParameters.rackBrightness = value / 100.0f;
             break;
         case kWindowParameterHaloBrightness:
-            fWindowParameters.haloBrightness = value / 100.0f;
+            windowParameters.haloBrightness = value / 100.0f;
             break;
         case kWindowParameterKnobMode:
             switch (static_cast<int>(value + 0.5f))
             {
             case 0:
-                fWindowParameters.knobMode = rack::settings::KNOB_MODE_LINEAR;
+                windowParameters.knobMode = rack::settings::KNOB_MODE_LINEAR;
                 break;
             case 1:
-                fWindowParameters.knobMode = rack::settings::KNOB_MODE_ROTARY_ABSOLUTE;
+                windowParameters.knobMode = rack::settings::KNOB_MODE_ROTARY_ABSOLUTE;
                 break;
             case 2:
-                fWindowParameters.knobMode = rack::settings::KNOB_MODE_ROTARY_RELATIVE;
+                windowParameters.knobMode = rack::settings::KNOB_MODE_ROTARY_RELATIVE;
                 break;
             }
             break;
         case kWindowParameterWheelKnobControl:
-            fWindowParameters.knobScroll = value > 0.5f;
+            windowParameters.knobScroll = value > 0.5f;
             break;
         case kWindowParameterWheelSensitivity:
-            fWindowParameters.knobScrollSensitivity = value / 1000.0f;
+            windowParameters.knobScrollSensitivity = value / 1000.0f;
             break;
         case kWindowParameterLockModulePositions:
-            fWindowParameters.lockModules = value > 0.5f;
+            windowParameters.lockModules = value > 0.5f;
             break;
         case kWindowParameterUpdateRateLimit:
-            fWindowParameters.rateLimit = static_cast<int>(value + 0.5f);
-            fRateLimitStep = 0;
+            windowParameters.rateLimit = static_cast<int>(value + 0.5f);
+            rateLimitStep = 0;
             break;
         default:
             return;
         }
 
-        WindowParametersSetValues(context->window, fWindowParameters);
+        WindowParametersSetValues(context->window, windowParameters);
     }
 
     void stateChanged(const char* key, const char* value) override
@@ -581,15 +587,15 @@ protected:
         */
 
         const ScopedContext sc(this, mods);
-        return context->event->handleButton(fLastMousePos, button, action, mods);
+        return context->event->handleButton(lastMousePos, button, action, mods);
     }
 
     bool onMotion(const MotionEvent& ev) override
     {
         const rack::math::Vec mousePos = rack::math::Vec(ev.pos.getX(), ev.pos.getY()).div(getScaleFactor()).round();
-        const rack::math::Vec mouseDelta = mousePos.minus(fLastMousePos);
+        const rack::math::Vec mouseDelta = mousePos.minus(lastMousePos);
 
-        fLastMousePos = mousePos;
+        lastMousePos = mousePos;
 
         const ScopedContext sc(this, glfwMods(ev.mod));
         return context->event->handleHover(mousePos, mouseDelta);
@@ -606,7 +612,7 @@ protected:
 
         const int mods = glfwMods(ev.mod);
         const ScopedContext sc(this, mods);
-        return context->event->handleScroll(fLastMousePos, scrollDelta);
+        return context->event->handleScroll(lastMousePos, scrollDelta);
     }
 
     bool onCharacterInput(const CharacterInputEvent& ev) override
@@ -616,7 +622,7 @@ protected:
 
         const int mods = glfwMods(ev.mod);
         const ScopedContext sc(this, mods);
-        return context->event->handleText(fLastMousePos, ev.character);
+        return context->event->handleText(lastMousePos, ev.character);
     }
 
     bool onKeyboard(const KeyboardEvent& ev) override
@@ -691,7 +697,7 @@ protected:
         }
 
         const ScopedContext sc(this, mods);
-        return context->event->handleKey(fLastMousePos, key, ev.keycode, action, mods);
+        return context->event->handleKey(lastMousePos, key, ev.keycode, action, mods);
     }
 
     void onResize(const ResizeEvent& ev) override
@@ -708,13 +714,17 @@ protected:
         setState("windowSize", sizeString);
     }
 
-    void uiFocus(const bool focus, CrossingMode) override
+    void uiFocus(const bool gotFocus, CrossingMode) override
     {
-        if (focus)
-            return;
-
-        const ScopedContext sc(this, 0);
-        context->event->handleLeave();
+        if (gotFocus)
+        {
+            getWindow().focus();
+        }
+        else
+        {
+            const ScopedContext sc(this, 0);
+            context->event->handleLeave();
+        }
     }
 
     void uiFileBrowserSelected(const char* const filename) override
