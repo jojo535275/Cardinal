@@ -120,7 +120,7 @@
 	url = https://github.com/SteveRussell33/LifeFormModular.git
 [submodule "plugins/21kHz"]
 	path = plugins/21kHz
-	url = https://github.com/jojo535275/21kHz-rack-plugins
+	url = https://github.com/jojo535275/21kHz-rack-plugins.git
 [submodule "deps/PawPaw"]
 	path = deps/PawPaw
 	url = https://github.com/DISTRHO/PawPaw.git
