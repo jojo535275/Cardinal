@@ -81,8 +81,10 @@ At the moment the following 3rd-party modules are provided:
 - Amalgamated Harmonics
 - Animated Circuits
 - Aria Salvatrice
+- Audible Instruments
 - Autinn
 - Bacon Music
+- Bidoo
 - Bogaudio
 - cf
 - ChowDSP
@@ -113,9 +115,7 @@ At the moment the following 3rd-party modules are provided:
 Potentially coming soon, currently sorting out license situation:
 - AS
 - Atelier
-- Audible Instruments
 - Befaco
-- Bidoo
 - Fundamental
 - ihtsyn
 - ZZC

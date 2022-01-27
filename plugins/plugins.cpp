@@ -77,9 +77,7 @@ extern Model* modelBlank;
 */
 
 // AudibleInstruments
-/*
 #include "AudibleInstruments/src/plugin.hpp"
-*/
 
 // Autinn
 /* NOTE too much noise in original include, do this a different way
@@ -131,9 +129,7 @@ extern Model* modelChord;
 */
 
 // Bidoo
-/*
 #include "Bidoo/src/plugin.hpp"
-*/
 
 // BogaudioModules - force dark skin as default
 #include <mutex>
@@ -556,11 +552,11 @@ Plugin* pluginInstance__AnimatedCircuits;
 Plugin* pluginInstance__Aria;
 // Plugin* pluginInstance__AS;
 // Plugin* pluginInstance__Atelier;
-// Plugin* pluginInstance__AudibleInstruments;
+Plugin* pluginInstance__AudibleInstruments;
 extern Plugin* pluginInstance__Autinn;
 Plugin* pluginInstance__Bacon;
 // Plugin* pluginInstance__Befaco;
-// Plugin* pluginInstance__Bidoo;
+Plugin* pluginInstance__Bidoo;
 Plugin* pluginInstance__BogaudioModules;
 Plugin* pluginInstance__cf;
 Plugin* pluginInstance__ChowDSP;
@@ -721,6 +717,9 @@ static void initStatic__Cardinal()
         p->addModel(modelHostAudio8);
         p->addModel(modelHostCV);
         p->addModel(modelHostMIDI);
+        p->addModel(modelHostMIDICC);
+        p->addModel(modelHostMIDIGate);
+        p->addModel(modelHostMIDIMap);
         p->addModel(modelHostParameters);
         p->addModel(modelHostTime);
         p->addModel(modelTextEditor);
@@ -916,7 +915,6 @@ static void initStatic__Atelier()
 }
 */
 
-/*
 static void initStatic__AudibleInstruments()
 {
     Plugin* const p = new Plugin;
@@ -947,7 +945,6 @@ static void initStatic__AudibleInstruments()
         p->addModel(modelStreams);
     }
 }
-*/
 
 static void initStatic__Autinn()
 {
@@ -1055,7 +1052,6 @@ static void initStatic__Befaco()
 }
 */
 
-/*
 static void initStatic__Bidoo()
 {
     Plugin* const p = new Plugin;
@@ -1114,7 +1110,6 @@ static void initStatic__Bidoo()
         spl.removeModule("antN");
     }
 }
-*/
 
 static void initStatic__BogaudioModules()
 {
@@ -2014,11 +2009,11 @@ void initStaticPlugins()
     initStatic__Aria();
     // initStatic__AS();
     // initStatic__Atelier();
-    // initStatic__AudibleInstruments();
+    initStatic__AudibleInstruments();
     initStatic__Autinn();
     initStatic__Bacon();
     // initStatic__Befaco();
-    // initStatic__Bidoo();
+    initStatic__Bidoo();
     initStatic__BogaudioModules();
     initStatic__cf();
     initStatic__ChowDSP();
